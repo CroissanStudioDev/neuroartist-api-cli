@@ -4,29 +4,54 @@
 
 ## Установка
 
-### Из исходников (рекомендовано для dev)
+### npm (рекомендовано — нужен Node 20+)
 
 ```bash
-cd cli
+npm install -g @neuroartist/cli
+na --version
+```
+
+### Curl-installer (без Node, единый бинарник)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/CroissanStudioDev/neuroartist-api-cli/main/install.sh | sh
+```
+
+Скрипт определит ОС/арку, скачает соответствующий `.tar.gz` из последнего релиза, распакует в `~/.neuroartist/bin/na`, пропишет PATH в `.zshrc`/`.bashrc`/`config.fish` и снимет macOS quarantine.
+
+Опции:
+```bash
+# Конкретная версия
+curl -fsSL https://raw.githubusercontent.com/CroissanStudioDev/neuroartist-api-cli/main/install.sh | sh -s -- v0.1.1
+
+# Кастомный install dir
+curl -fsSL https://raw.githubusercontent.com/CroissanStudioDev/neuroartist-api-cli/main/install.sh | NEUROARTIST_INSTALL=/opt/na sh
+```
+
+### Windows
+
+Качай `.zip` из последнего релиза:
+https://github.com/CroissanStudioDev/neuroartist-api-cli/releases/latest
+
+Распакуй и положи `na.exe` в любую папку из `PATH`.
+
+### Из исходников (для dev)
+
+```bash
+git clone https://github.com/CroissanStudioDev/neuroartist-api-cli.git
+cd neuroartist-api-cli
 bun install
-bun link              # делает `na` доступным глобально
+bun run dev auth login           # запуск напрямую
+bun link                         # сделать `na` глобально доступным
 ```
 
-Альтернативно — без `bun link`, через прямой запуск:
-
-```bash
-bun run src/index.ts auth login
-```
-
-### Standalone-бинарник (Bun compile)
+### Самосборка standalone-бинарника
 
 ```bash
 bun run build:bin                  # текущая ОС/архитектура
 bun run build:darwin-arm64         # явный target
 bun run build:all                  # все 5 платформ
 ```
-
-Результат — единый бинарник в `dist/`, без зависимостей. Скопируй в `~/.local/bin/na` или раздай как release-asset.
 
 ## Quick start
 
