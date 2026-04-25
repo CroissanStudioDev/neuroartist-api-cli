@@ -3,6 +3,7 @@ import { ApiError } from "./client.ts";
 import { registerAuthCommands } from "./commands/auth.ts";
 import { registerBalanceCommand } from "./commands/balance.ts";
 import { registerCommandsCommand } from "./commands/commands.ts";
+import { registerCompletionCommand } from "./commands/completion.ts";
 import { registerDoctorCommand } from "./commands/doctor.ts";
 import { registerModelsCommands } from "./commands/models.ts";
 import { registerQueueCommands } from "./commands/queue.ts";
@@ -74,6 +75,7 @@ registerQueueCommands(program);
 registerUsageCommands(program);
 registerDoctorCommand(program);
 registerUpdateCommand(program);
+registerCompletionCommand(program);
 registerCommandsCommand(program);
 
 program.parseAsync(process.argv).catch((err: unknown) => {

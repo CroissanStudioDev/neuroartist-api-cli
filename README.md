@@ -140,7 +140,26 @@ na activity --limit 20           Последние генерации
 
 na doctor                        Self-check (config + /health + /me)
 na update [--check]              Self-update binary install (or hint for npm/dev)
+na completion bash|zsh|fish      Print shell completion script (eval $(na completion zsh))
 ```
+
+## Shell completion
+
+```bash
+# bash
+echo 'eval "$(na completion bash)"' >> ~/.bashrc
+
+# zsh — eval inline
+echo 'eval "$(na completion zsh)"' >> ~/.zshrc
+
+# zsh — function file (faster startup):
+na completion zsh > "${fpath[1]}/_na"
+
+# fish
+na completion fish > ~/.config/fish/completions/na.fish
+```
+
+После установки: `na <TAB>` дополняет subcommand (`auth`, `models`, ...), `na auth <TAB>` — child (`login`, `logout`, `whoami`, `status`).
 
 ## Передача входных данных
 
