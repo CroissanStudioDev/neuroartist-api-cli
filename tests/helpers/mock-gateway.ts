@@ -1,4 +1,4 @@
-import type { Server } from "bun";
+import { type Server, serve } from "bun";
 
 export type Handler = (req: Request, url: URL) => Response | Promise<Response>;
 
@@ -43,16 +43,207 @@ const SAMPLE_USER = {
   role: "user",
 };
 
+// Route patterns hoisted so handlers stay below the cognitive-complexity bar
+// and we don't allocate regexes per request.
+const MODEL_DETAIL_RE = /^\/models\/(.+)$/;
+const RUN_RE = /^\/run\/(.+)$/;
+const QUEUE_SUBMIT_RE = /^\/queue\/([^/]+)$/;
+const QUEUE_STATUS_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/status$/;
+const QUEUE_STREAM_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/progress\/stream$/;
+const QUEUE_RESULT_RE = /^\/queue\/(.+)\/requests\/([^/]+)$/;
+const QUEUE_CANCEL_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/cancel$/;
+const PUBLIC_MODEL_DETAIL_RE = /^\/models\/[^/]+$/;
+
+const PROGRESS_FRAMES = [
+  'event: progress\ndata: {"stage":"starting"}\n\n',
+  'event: progress\ndata: {"stage":"completed"}\n\n',
+];
+
+function isPublic(pathname: string): boolean {
+  return pathname === "/health" || pathname === "/models" || PUBLIC_MODEL_DETAIL_RE.test(pathname);
+}
+
+function buildAuthGate(expectedKey: string) {
+  return (req: Request, url: URL): Response | null => {
+    if (isPublic(url.pathname)) {
+      return null;
+    }
+    const key = req.headers.get("x-api-key");
+    if (!key) {
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (key !== expectedKey) {
+      return Response.json({ error: "invalid_api_key" }, { status: 401 });
+    }
+    return null;
+  };
+}
+
+function meRoute(): Response {
+  return Response.json({
+    user: SAMPLE_USER,
+    auth: { source: "apiKey", apiKeyId: "k_test" },
+  });
+}
+
+function balanceRoute(balance: number): Response {
+  return Response.json({ userId: SAMPLE_USER.id, balance });
+}
+
+function usageSummaryRoute(balance: number): Response {
+  return Response.json({
+    balance,
+    windows: [
+      { window: "5h", credits: 0, count: 0, byModel: [] },
+      { window: "24h", credits: 50, count: 3, byModel: [] },
+    ],
+  });
+}
+
+function activityRoute(): Response {
+  return Response.json({
+    items: [
+      {
+        falRequestId: "req_abc",
+        modelId: "test-model",
+        status: "success",
+        credits: 10,
+        createdAt: "2026-04-25T19:00:00Z",
+      },
+    ],
+    total: 1,
+  });
+}
+
+function modelsListRoute(items: NonNullable<MockOptions["models"]>): Response {
+  return Response.json({ items, total: items.length, limit: 50, offset: 0 });
+}
+
+function modelDetailRoute(id: string): Response {
+  return Response.json({
+    modelId: id,
+    displayName: `${id} display`,
+    category: "text-to-image",
+    priceRub: 10,
+    schema: { input: { prompt: { type: "string" } } },
+  });
+}
+
+function runSyncRoute(): Response {
+  return Response.json({
+    images: [{ url: "https://example.com/output.png" }],
+    description: "stub",
+  });
+}
+
+function queueSubmitRoute(): Response {
+  return Response.json({ request_id: "req_xyz", status: "IN_QUEUE" });
+}
+
+function queueStatusRoute(reqId: string): Response {
+  return Response.json({ status: "COMPLETED", request_id: reqId });
+}
+
+function queueStreamRoute(): Response {
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        const enc = new TextEncoder();
+        for (const frame of PROGRESS_FRAMES) {
+          controller.enqueue(enc.encode(frame));
+        }
+        controller.close();
+      },
+    }),
+    { headers: { "content-type": "text/event-stream" } }
+  );
+}
+
+function queueResultRoute(): Response {
+  return Response.json({ images: [{ url: "https://example.com/result.png" }] });
+}
+
+function queueCancelRoute(): Response {
+  return Response.json({ cancelled: true });
+}
+
+type ExactRoute = (opts: MockOptions) => Response;
+
+function defaultModels(opts: MockOptions): NonNullable<MockOptions["models"]> {
+  return (
+    opts.models ?? [
+      {
+        modelId: "test-model",
+        displayName: "Test Model",
+        category: "text-to-image",
+        priceRub: 10,
+        creditCost: 10,
+        modelLab: "Test",
+      },
+    ]
+  );
+}
+
+const EXACT_GET_ROUTES: Record<string, ExactRoute> = {
+  "/health": () => Response.json({ status: "ok" }),
+  "/me": () => meRoute(),
+  "/me/balance": (opts) => balanceRoute(opts.balance ?? 1000),
+  "/me/usage": (opts) => usageSummaryRoute(opts.balance ?? 1000),
+  "/me/usage/by-model": () =>
+    Response.json({ items: [{ modelId: "test-model", credits: 50, count: 3 }] }),
+  "/me/activity": () => activityRoute(),
+  "/models": (opts) => modelsListRoute(defaultModels(opts)),
+};
+
+interface PatternRoute {
+  handle: (match: RegExpExecArray) => Response;
+  method: string;
+  re: RegExp;
+}
+
+const PATTERN_ROUTES: PatternRoute[] = [
+  { re: QUEUE_CANCEL_RE, method: "PUT", handle: () => queueCancelRoute() },
+  { re: QUEUE_STREAM_RE, method: "GET", handle: () => queueStreamRoute() },
+  {
+    re: QUEUE_STATUS_RE,
+    method: "GET",
+    handle: (m) => queueStatusRoute(m[2] ?? "unknown"),
+  },
+  { re: QUEUE_RESULT_RE, method: "GET", handle: () => queueResultRoute() },
+  { re: QUEUE_SUBMIT_RE, method: "POST", handle: () => queueSubmitRoute() },
+  { re: RUN_RE, method: "POST", handle: () => runSyncRoute() },
+  {
+    re: MODEL_DETAIL_RE,
+    method: "GET",
+    handle: (m) => modelDetailRoute(m[1] ?? "unknown"),
+  },
+];
+
+function dispatchPattern(req: Request, pathname: string, opts: MockOptions): Response | null {
+  if (req.method === "GET") {
+    const exact = EXACT_GET_ROUTES[pathname];
+    if (exact) {
+      return exact(opts);
+    }
+  }
+  for (const { re, method, handle } of PATTERN_ROUTES) {
+    if (req.method !== method) {
+      continue;
+    }
+    const match = re.exec(pathname);
+    if (match) {
+      return handle(match);
+    }
+  }
+  return null;
+}
+
 export function startMockGateway(opts: MockOptions = {}): MockGateway {
-  const apiKey = opts.apiKey ?? DEFAULT_KEY;
+  const expectedKey = opts.apiKey ?? DEFAULT_KEY;
   const requests: MockGateway["requests"] = [];
+  const authGate = buildAuthGate(expectedKey);
 
-  const isPublic = (pathname: string) =>
-    pathname === "/health" ||
-    pathname === "/models" ||
-    (pathname.startsWith("/models/") && pathname.split("/").length === 3);
-
-  const server: Server = Bun.serve({
+  const server: Server = serve({
     port: 0,
     async fetch(req) {
       const url = new URL(req.url);
@@ -67,133 +258,19 @@ export function startMockGateway(opts: MockOptions = {}): MockGateway {
         return Response.json({ error: "forced_failure" }, { status: opts.failWith });
       }
 
-      if (opts.routes?.[url.pathname]) {
-        return opts.routes[url.pathname]!(req, url);
+      const override = opts.routes?.[url.pathname];
+      if (override) {
+        return override(req, url);
       }
 
-      // Auth gate
-      if (!isPublic(url.pathname)) {
-        const key = req.headers.get("x-api-key");
-        if (!key) {
-          return Response.json({ error: "unauthorized" }, { status: 401 });
-        }
-        if (key !== apiKey) {
-          return Response.json({ error: "invalid_api_key" }, { status: 401 });
-        }
+      const authFail = authGate(req, url);
+      if (authFail) {
+        return authFail;
       }
 
-      // ----- Standard routes -----
-      if (url.pathname === "/health") {
-        return Response.json({ status: "ok" });
-      }
-
-      if (url.pathname === "/me") {
-        return Response.json({
-          user: SAMPLE_USER,
-          auth: { source: "apiKey", apiKeyId: "k_test" },
-        });
-      }
-
-      if (url.pathname === "/me/balance") {
-        return Response.json({ userId: SAMPLE_USER.id, balance: opts.balance ?? 1000 });
-      }
-
-      if (url.pathname === "/me/usage") {
-        return Response.json({
-          balance: opts.balance ?? 1000,
-          windows: [
-            { window: "5h", credits: 0, count: 0, byModel: [] },
-            { window: "24h", credits: 50, count: 3, byModel: [] },
-          ],
-        });
-      }
-
-      if (url.pathname === "/me/usage/by-model") {
-        return Response.json({ items: [{ modelId: "test-model", credits: 50, count: 3 }] });
-      }
-
-      if (url.pathname === "/me/activity") {
-        return Response.json({
-          items: [
-            {
-              falRequestId: "req_abc",
-              modelId: "test-model",
-              status: "success",
-              credits: 10,
-              createdAt: "2026-04-25T19:00:00Z",
-            },
-          ],
-          total: 1,
-        });
-      }
-
-      if (url.pathname === "/models") {
-        const items = opts.models ?? [
-          {
-            modelId: "test-model",
-            displayName: "Test Model",
-            category: "text-to-image",
-            priceRub: 10,
-            creditCost: 10,
-            modelLab: "Test",
-          },
-        ];
-        return Response.json({ items, total: items.length, limit: 50, offset: 0 });
-      }
-
-      const modelMatch = /^\/models\/(.+)$/.exec(url.pathname);
-      if (modelMatch && req.method === "GET") {
-        const id = modelMatch[1];
-        return Response.json({
-          modelId: id,
-          displayName: `${id} display`,
-          category: "text-to-image",
-          priceRub: 10,
-          schema: { input: { prompt: { type: "string" } } },
-        });
-      }
-
-      const runMatch = /^\/run\/(.+)$/.exec(url.pathname);
-      if (runMatch && req.method === "POST") {
-        return Response.json({
-          images: [{ url: "https://example.com/output.png" }],
-          description: "stub",
-        });
-      }
-
-      const queueSubmit = /^\/queue\/(.+)$/.exec(url.pathname);
-      if (queueSubmit && req.method === "POST" && !url.pathname.includes("/requests/")) {
-        return Response.json({ request_id: "req_xyz", status: "IN_QUEUE" });
-      }
-
-      const statusMatch = /^\/queue\/(.+)\/requests\/(.+)\/status$/.exec(url.pathname);
-      if (statusMatch && req.method === "GET") {
-        return Response.json({ status: "COMPLETED", request_id: statusMatch[2] });
-      }
-
-      const streamMatch = /^\/queue\/(.+)\/requests\/(.+)\/progress\/stream$/.exec(url.pathname);
-      if (streamMatch && req.method === "GET") {
-        return new Response(
-          new ReadableStream({
-            start(controller) {
-              const enc = new TextEncoder();
-              controller.enqueue(enc.encode('event: progress\ndata: {"stage":"starting"}\n\n'));
-              controller.enqueue(enc.encode('event: progress\ndata: {"stage":"completed"}\n\n'));
-              controller.close();
-            },
-          }),
-          { headers: { "content-type": "text/event-stream" } }
-        );
-      }
-
-      const resultMatch = /^\/queue\/(.+)\/requests\/(.+)$/.exec(url.pathname);
-      if (resultMatch && req.method === "GET") {
-        return Response.json({ images: [{ url: "https://example.com/result.png" }] });
-      }
-
-      const cancelMatch = /^\/queue\/(.+)\/requests\/(.+)\/cancel$/.exec(url.pathname);
-      if (cancelMatch && req.method === "PUT") {
-        return Response.json({ cancelled: true });
+      const standard = dispatchPattern(req, url.pathname, opts);
+      if (standard) {
+        return standard;
       }
 
       return Response.json({ error: "not_found", path: url.pathname }, { status: 404 });

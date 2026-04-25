@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseInputs } from "../../src/inputs.ts";
 
+const PNG_DATA_URL_RE = /^data:image\/png;base64,/;
+const INVALID_INPUT_RE = /Invalid input arg/;
+
 describe("parseInputs", () => {
   test("plain string", () => {
     expect(parseInputs(["prompt=hello"])).toEqual({ prompt: "hello" });
@@ -76,11 +79,11 @@ describe("parseInputs", () => {
     writeFileSync(file, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
     const out = parseInputs([`image=@${file}`]) as { image: string };
-    expect(out.image).toMatch(/^data:image\/png;base64,/);
+    expect(out.image).toMatch(PNG_DATA_URL_RE);
   });
 
   test("invalid format throws", () => {
-    expect(() => parseInputs(["nokey"])).toThrow(/Invalid input arg/);
-    expect(() => parseInputs(["=novalue"])).toThrow(/Invalid input arg/);
+    expect(() => parseInputs(["nokey"])).toThrow(INVALID_INPUT_RE);
+    expect(() => parseInputs(["=novalue"])).toThrow(INVALID_INPUT_RE);
   });
 });

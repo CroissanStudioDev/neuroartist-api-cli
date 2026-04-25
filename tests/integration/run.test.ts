@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { serve } from "bun";
 import { startMockGateway, TEST_API_KEY } from "../helpers/mock-gateway.ts";
 import { runCli } from "../helpers/run-cli.ts";
 import { createTempEnv } from "../helpers/temp-config.ts";
+
+const QUEUE_STREAM_RE = /queue stream/;
 
 let mock: ReturnType<typeof startMockGateway>;
 let env: ReturnType<typeof createTempEnv>;
@@ -51,9 +54,11 @@ describe("run + queue", () => {
       NEUROARTIST_API_KEY: TEST_API_KEY,
     });
     const runReq = mock.requests.find((r) => r.pathname === "/run/my-model");
-    expect(runReq).toBeDefined();
-    expect(runReq?.method).toBe("POST");
-    expect(JSON.parse(runReq!.body)).toEqual({ prompt: "cat", steps: 20 });
+    if (!runReq) {
+      throw new Error("expected POST /run/my-model");
+    }
+    expect(runReq.method).toBe("POST");
+    expect(JSON.parse(runReq.body)).toEqual({ prompt: "cat", steps: 20 });
   });
 
   test("run with -o downloads referenced URLs", async () => {
@@ -67,7 +72,7 @@ describe("run + queue", () => {
     });
 
     // Spin a tiny file server for the asset URL.
-    const fileServer = Bun.serve({
+    const fileServer = serve({
       port: 0,
       fetch() {
         return new Response(TINY_PNG, { headers: { "content-type": "image/png" } });
@@ -93,8 +98,10 @@ describe("run + queue", () => {
     const env_ = JSON.parse(r.stdout);
     expect(env_.data.downloads).toHaveLength(1);
     const file = readdirSync(outDir)[0];
-    expect(file).toBeDefined();
-    const buf = readFileSync(join(outDir, file!));
+    if (!file) {
+      throw new Error("expected at least one downloaded file");
+    }
+    const buf = readFileSync(join(outDir, file));
     expect(buf.length).toBeGreaterThan(50);
 
     fileServer.stop(true);
@@ -111,7 +118,7 @@ describe("run + queue", () => {
     const env_ = JSON.parse(r.stdout);
     expect(env_.data.request_id).toBe("req_xyz");
     expect(env_.next_actions).toBeDefined();
-    expect(env_.next_actions[0].command).toMatch(/queue stream/);
+    expect(env_.next_actions[0].command).toMatch(QUEUE_STREAM_RE);
   });
 
   test("queue status", async () => {

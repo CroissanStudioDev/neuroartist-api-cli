@@ -40,9 +40,9 @@ describe("config", () => {
     cfg.setProfileKey("default", "na_live_secret123", "https://example.com");
     const path = cfg.CONFIG_PATH;
     const st = statSync(path);
-    // mode & 0o777 → just permission bits
-    // We expect at least owner-rw, no group/other read.
-    expect(st.mode & 0o077).toBe(0);
+    // Permission bits = last 3 octal digits. Owner rw, no group, no other → "600".
+    const permission = st.mode.toString(8).slice(-3);
+    expect(permission).toBe("600");
     const out = cfg.readConfig();
     expect(out.profiles.default.apiKey).toBe("na_live_secret123");
     expect(out.profiles.default.baseUrl).toBe("https://example.com");

@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { spawn } from "bun";
 
 const CLI_ENTRY = resolve(import.meta.dir, "..", "..", "src", "index.ts");
 
@@ -16,7 +17,7 @@ export interface RunResult {
  *   - NEUROARTIST_JSON=1    forces JSON envelope output (we test contract, not pretty)
  */
 export async function runCli(args: string[], env: Record<string, string> = {}): Promise<RunResult> {
-  const proc = Bun.spawn({
+  const proc = spawn({
     cmd: ["bun", "run", CLI_ENTRY, ...args],
     env: {
       ...process.env,

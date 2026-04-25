@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { runCli } from "../helpers/run-cli.ts";
 
+const SEMVER_RE = /^\d+\.\d+\.\d+$/;
+const UNKNOWN_COMMAND_RE = /unknown command/i;
+const GIT_PULL_HINT_RE = /git pull/;
+
 describe("CLI meta-commands", () => {
   test("--version prints version", async () => {
     const r = await runCli(["--version"]);
     expect(r.exitCode).toBe(0);
-    expect(r.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(r.stdout.trim()).toMatch(SEMVER_RE);
   });
 
   test("--help exits 0 and lists commands", async () => {
@@ -39,7 +43,7 @@ describe("CLI meta-commands", () => {
   test("unknown command → exit 1 (commander default)", async () => {
     const r = await runCli(["this-does-not-exist"]);
     expect(r.exitCode).not.toBe(0);
-    expect(r.stderr).toMatch(/unknown command/i);
+    expect(r.stderr).toMatch(UNKNOWN_COMMAND_RE);
   });
 });
 
@@ -80,6 +84,6 @@ describe("update --check", () => {
     const env_ = JSON.parse(r.stdout);
     expect(env_.ok).toBe(true);
     expect(env_.data.mode).toBe("dev");
-    expect(env_.data.hint).toMatch(/git pull/);
+    expect(env_.data.hint).toMatch(GIT_PULL_HINT_RE);
   });
 });

@@ -36,29 +36,5 @@
         "organizeImports": "on"
       }
     }
-  },
-  "overrides": [
-    {
-      "includes": ["tests/**"],
-      "javascript": {
-        "globals": ["Bun"]
-      },
-      "linter": {
-        "rules": {
-          "complexity": { "noExcessiveCognitiveComplexity": "off" },
-          "correctness": { "noUndeclaredVariables": "off" },
-          "performance": { "useTopLevelRegex": "off" },
-          "style": {
-            "noNonNullAssertion": "off",
-            "useFilenamingConvention": "off"
-          },
-          "suspicious": {
-            "noBitwiseOperators": "off",
-            "noEvolvingTypes": "off",
-            "noExplicitAny": "off"
-          }
-        }
-      }
-    }
-  ]
+  }
 }

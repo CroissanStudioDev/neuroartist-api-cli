@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSse } from "../../src/sse.ts";
+import { parseSse, type SseFrame } from "../../src/sse.ts";
 
 function streamFrom(chunks: string[]): Response {
   const enc = new TextEncoder();
@@ -17,7 +17,7 @@ function streamFrom(chunks: string[]): Response {
 describe("parseSse", () => {
   test("single event with data", async () => {
     const res = streamFrom(['event: progress\ndata: {"stage":"starting"}\n\n']);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
@@ -26,7 +26,7 @@ describe("parseSse", () => {
 
   test("two events split across chunks", async () => {
     const res = streamFrom(["event: a\ndata: 1\n\nevent: b\ndata: 2", "\n\n"]);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
@@ -38,7 +38,7 @@ describe("parseSse", () => {
 
   test("data spans multiple lines", async () => {
     const res = streamFrom(["data: line1\ndata: line2\n\n"]);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
@@ -47,7 +47,7 @@ describe("parseSse", () => {
 
   test("comment lines (:) are skipped", async () => {
     const res = streamFrom([": keepalive\nevent: tick\ndata: ok\n\n"]);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
@@ -56,7 +56,7 @@ describe("parseSse", () => {
 
   test("frames without trailing blank line are emitted at EOF", async () => {
     const res = streamFrom(["event: x\ndata: y\n\n", "data: z"]);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
@@ -68,7 +68,7 @@ describe("parseSse", () => {
 
   test("CRLF line endings handled", async () => {
     const res = streamFrom(["event: x\r\ndata: 1\r\n\r\n"]);
-    const frames = [];
+    const frames: SseFrame[] = [];
     for await (const f of parseSse(res)) {
       frames.push(f);
     }
