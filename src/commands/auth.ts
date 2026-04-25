@@ -24,7 +24,7 @@ export function registerAuthCommands(root: Command): void {
 Examples:
   $ na auth login                                # interactive paste
   $ na auth login --token $NEUROARTIST_API_KEY   # non-interactive
-  $ na --profile staging auth login --base-url https://staging.neuroartist.ru
+  $ na --profile work auth login                 # save key under the 'work' profile
 `
     )
     .action(async (opts: { token?: string }, command) => {

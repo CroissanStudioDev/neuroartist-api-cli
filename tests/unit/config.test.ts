@@ -82,9 +82,9 @@ describe("config", () => {
   test("resolveAuth: profile flag selects different profile", async () => {
     const cfg = await freshConfig();
     cfg.setProfileKey("default", "default_key", "https://d.example");
-    cfg.setProfileKey("staging", "staging_key", "https://s.example");
-    const r = cfg.resolveAuth({ profile: "staging" });
-    expect(r.apiKey).toBe("staging_key");
+    cfg.setProfileKey("work", "work_key", "https://s.example");
+    const r = cfg.resolveAuth({ profile: "work" });
+    expect(r.apiKey).toBe("work_key");
     expect(r.baseUrl).toBe("https://s.example");
   });
 });

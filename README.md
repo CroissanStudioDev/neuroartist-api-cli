@@ -88,10 +88,6 @@ na queue result some-video-model <requestId> -o ./out
     "default": {
       "apiKey": "na_live_...",
       "baseUrl": "https://api.neuroartist.ru"
-    },
-    "staging": {
-      "apiKey": "na_live_...",
-      "baseUrl": "https://staging.neuroartist.ru"
     }
   }
 }
@@ -104,11 +100,13 @@ na queue result some-video-model <requestId> -o ./out
 3. Конфиг-файл (профиль)
 4. Default base URL: `https://api.neuroartist.ru`
 
-### Несколько окружений
+### Несколько профилей
+
+Несколько API-ключей под одним шлюзом (например, личный и рабочий аккаунт):
 
 ```bash
-na --profile staging auth login --base-url https://staging.neuroartist.ru
-na --profile staging balance
+na --profile work auth login    # сохранит ключ под именем `work`
+na --profile work balance       # использует профиль `work`
 ```
 
 ## Команды
