@@ -350,10 +350,25 @@ bun run build:bin                # одиночный бинарник
 
 Если `cli/` войдёт в существующий репо (backend/web) — конфиг переопределит локальный husky этого репо. Тогда лучше переехать на корневой `lefthook.yml` с per-package задачами.
 
+### Тесты
+
+```bash
+bun test                    # все тесты (~2s)
+bun run test:unit           # только unit (pure functions)
+bun run test:integration    # только integration (CLI subprocess + mock gateway)
+```
+
+`tests/`:
+- `helpers/mock-gateway.ts` — `Bun.serve` mock со всеми public + auth-routes (балансы, models, run, queue, SSE-стрим)
+- `helpers/temp-config.ts` — изолированный `XDG_CONFIG_HOME` per-test
+- `helpers/run-cli.ts` — спавн `bun run src/index.ts ...` subprocess, возвращает `{ stdout, stderr, exitCode }`
+- `unit/` — pure: `parseInputs`, `parseSse`, `collectUrls`, envelope/exit codes, config
+- `integration/` — реальный CLI flow: auth login/whoami/status, balance, models list/get/schema, run sync + asset download, queue submit/status/stream/cancel, exit-codes на 401/429/500, completion bash/zsh/fish, commands self-discovery
+
 ### CI
 
 `.github/workflows/ci.yml`:
-- **`lint-and-build`** на каждый push/PR — install → lint → typecheck → smoke-compile.
+- **`lint-and-build`** на каждый push/PR — install → lint → typecheck → **`bun test`** → smoke-compile.
 - **`release-binaries`** на тег `v*` — матрица из 5 платформ (linux/darwin/windows × x64/arm64), сборка через `bun build --compile --target=...`, аплоад в GitHub Release.
 
 Для активации release-jobов нужен публичный репо + GitHub token с `contents: write` (`softprops/action-gh-release@v2` использует `GITHUB_TOKEN` по умолчанию).

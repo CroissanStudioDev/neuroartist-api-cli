@@ -41,6 +41,9 @@ jobs:
       - name: Typecheck (tsc --noEmit)
         run: bun run typecheck
 
+      - name: Tests (bun test)
+        run: bun test
+
       - name: Compile binary smoke
         run: bun run build:bin && ./dist/na --version
 

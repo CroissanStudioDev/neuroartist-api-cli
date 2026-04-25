@@ -56,6 +56,9 @@
     "doctor": "ultracite doctor",
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
+    "test": "bun test",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration",
     "prepublishOnly": "bun run lint && bun run typecheck && bun run build",
     "prepare": "husky",
     "start": "bun run src/index.ts"
