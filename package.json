@@ -22,7 +22,7 @@
     "url": "https://github.com/CroissanStudioDev/neuroartist-api-cli/issues"
   },
   "author": "Neuroartist",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "type": "module",
   "bin": {
     "na": "./dist/na.js"
