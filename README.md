@@ -1,6 +1,6 @@
 # НейроХудожник API CLI
 
-Командная строка `na` для НейроХудожник API Gateway: запуск генераций, управление балансом, просмотр активности, отладка из терминала. Двойного использования — одинаково удобна для людей и для LLM-агентов через shell.
+Командная строка `na` для НейроХудожник API: запуск генераций, управление балансом, просмотр активности, отладка из терминала. Двойного использования — одинаково удобна для людей и для LLM-агентов через shell.
 
 ```bash
 npm install -g @neuroartist/cli
@@ -167,7 +167,7 @@ na run some-model --input-file ./body.json
 
 ```
 --profile <name>      Профиль из конфига
---base-url <url>      Override gateway URL
+--base-url <url>      Override base API URL
 --json                Принудительно JSON envelope (auto в pipe / non-TTY / NEUROARTIST_JSON=1)
 --debug               HTTP traffic в stderr
 -q, --quiet           Заглушить informational-сообщения
@@ -364,12 +364,12 @@ bun run test:integration         # только integration
 ```
 tests/
 ├── helpers/
-│   ├── mock-gateway.ts    Bun.serve mock со всеми public + auth-routes
+│   ├── mock-gateway.ts    Bun.serve mock со всеми public + auth-routes API
 │   ├── temp-config.ts     изолированный XDG_CONFIG_HOME per-test
 │   └── run-cli.ts         спавн bun run src/index.ts subprocess
 ├── unit/                  pure functions: parseInputs, parseSse, collectUrls,
 │                          envelope/exit codes, config
-└── integration/           CLI flow через subprocess + mock gateway:
+└── integration/           CLI flow через subprocess + mock API:
                            auth, balance, models, run + queue, completion,
                            commands self-discovery, exit codes на 401/429/500
 ```
