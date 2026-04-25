@@ -1,0 +1,82 @@
+{
+  "name": "@neuroartist/cli",
+  "version": "0.1.0",
+  "description": "Neuroartist API Gateway — command-line interface for image/video generation, balance, usage and activity. Agent-friendly JSON envelope and granular exit codes.",
+  "keywords": [
+    "neuroartist",
+    "ai",
+    "cli",
+    "image-generation",
+    "video-generation",
+    "fal",
+    "openai",
+    "command-line",
+    "agentic"
+  ],
+  "homepage": "https://api.neuroartist.ru/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CroissanStudioDev/neuroartist-api-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CroissanStudioDev/neuroartist-api-cli/issues"
+  },
+  "author": "Neuroartist",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "na": "./dist/na.js"
+  },
+  "files": [
+    "dist/na.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.1.0"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=node --format=esm --outfile=dist/na.js --banner='#!/usr/bin/env node' && chmod +x dist/na.js",
+    "build:bin": "bun build src/index.ts --compile --outfile=dist/na",
+    "build:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile=dist/na-linux-x64",
+    "build:linux-arm64": "bun build src/index.ts --compile --target=bun-linux-arm64 --outfile=dist/na-linux-arm64",
+    "build:darwin-x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile=dist/na-darwin-x64",
+    "build:darwin-arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile=dist/na-darwin-arm64",
+    "build:windows-x64": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile=dist/na-windows-x64.exe",
+    "build:all": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:darwin-x64 && bun run build:darwin-arm64 && bun run build:windows-x64",
+    "typecheck": "tsc --noEmit",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "format": "ultracite format",
+    "doctor": "ultracite doctor",
+    "lint": "ultracite check",
+    "lint:fix": "ultracite fix",
+    "prepublishOnly": "bun run lint && bun run typecheck && bun run build",
+    "prepare": "husky",
+    "start": "bun run src/index.ts"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs,cjs}": "ultracite fix",
+    "biome.jsonc": "ultracite fix",
+    "package.json": "ultracite fix"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "commander": "^12.1.0",
+    "kleur": "^4.1.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@types/bun": "^1.1.13",
+    "@types/node": "^22.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "typescript": "^5.6.3",
+    "ultracite": "^7.0.0"
+  }
+}
