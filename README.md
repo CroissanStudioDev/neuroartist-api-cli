@@ -139,6 +139,7 @@ na usage by-key   -w 24h         Расход по API-ключам
 na activity --limit 20           Последние генерации
 
 na doctor                        Self-check (config + /health + /me)
+na update [--check]              Self-update binary install (or hint for npm/dev)
 ```
 
 ## Передача входных данных

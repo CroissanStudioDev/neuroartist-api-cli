@@ -7,6 +7,7 @@ import { registerDoctorCommand } from "./commands/doctor.ts";
 import { registerModelsCommands } from "./commands/models.ts";
 import { registerQueueCommands } from "./commands/queue.ts";
 import { registerRunCommand } from "./commands/run.ts";
+import { registerUpdateCommand } from "./commands/update.ts";
 import { registerUsageCommands } from "./commands/usage.ts";
 import { exitCodeFor, failure } from "./envelope.ts";
 import type { GlobalOpts } from "./output.ts";
@@ -72,6 +73,7 @@ registerRunCommand(program);
 registerQueueCommands(program);
 registerUsageCommands(program);
 registerDoctorCommand(program);
+registerUpdateCommand(program);
 registerCommandsCommand(program);
 
 program.parseAsync(process.argv).catch((err: unknown) => {
