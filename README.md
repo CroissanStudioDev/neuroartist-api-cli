@@ -100,15 +100,6 @@ na queue result some-video-model <requestId> -o ./out
 3. Конфиг-файл (профиль)
 4. Default base URL: `https://api.neuroartist.ru`
 
-### Несколько профилей
-
-Несколько API-ключей под одним шлюзом (например, личный и рабочий аккаунт):
-
-```bash
-na --profile work auth login    # сохранит ключ под именем `work`
-na --profile work balance       # использует профиль `work`
-```
-
 ## Команды
 
 ```
