@@ -75,7 +75,12 @@ Examples:
         return;
       }
 
-      if (mode !== "binary") {
+      // --force overrides mode detection — user explicitly opts into the
+      // binary-replace flow even if we think we're in npm/dev mode (covers
+      // misdetection on stale builds and lets users force-recover).
+      const treatAsBinary = mode === "binary" || Boolean(opts.force);
+
+      if (!treatAsBinary) {
         printResult("update", info, {
           globalOpts: g,
           pretty: () => {
@@ -136,16 +141,14 @@ Examples:
 }
 
 function detectMode(): InstallMode {
-  const entryPath = fileURLToPathSafe(import.meta.url);
   const exec = process.execPath.toLowerCase();
   const baseExec = exec.split(PATH_SEP_RE).pop() ?? "";
 
-  // dev: running source .ts files (bun src/index.ts)
-  if (entryPath.endsWith(".ts")) {
-    return "dev";
-  }
-
-  // Compiled bun binary: execPath name is `na` / `na.exe` (or any non-node/bun name)
+  // Compiled standalone binary first — execPath itself is `na` / `na.exe`.
+  // Inside a `bun --compile` binary, import.meta.url still points to the
+  // bundled source file (.ts), so we cannot rely on it to distinguish
+  // compiled-binary from `bun run src/...`. The binary is named neither
+  // `node`, `bun`, nor a `node-*` variant.
   if (
     baseExec !== "node" &&
     baseExec !== "node.exe" &&
@@ -156,18 +159,16 @@ function detectMode(): InstallMode {
     return "binary";
   }
 
-  // Node-driven: anything else is npm/local-build
-  if (entryPath.includes(`${joinSep("node_modules")}@neuroartist`)) {
-    return "npm";
-  }
+  // Node-driven (or `bun run`): use the entry path to tell apart npm install
+  // from a local source checkout.
+  const entryPath = fileURLToPathSafe(import.meta.url);
   if (entryPath.includes("node_modules")) {
     return "npm";
   }
+  if (entryPath.endsWith(".ts")) {
+    return "dev";
+  }
   return "dev";
-}
-
-function joinSep(s: string): string {
-  return process.platform === "win32" ? `\\${s}\\` : `/${s}/`;
 }
 
 function fileURLToPathSafe(url: string): string {
