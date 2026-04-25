@@ -96,15 +96,31 @@ jobs:
 
       - name: Compile ${{ matrix.target.name }}
         run: |
-          bun build src/index.ts --compile \
+          bun build src/index.ts --compile --minify --bytecode \
             --target=${{ matrix.target.flag }} \
             --outfile=dist/na-${{ matrix.target.name }}${{ matrix.target.ext }}
+
+      - name: Package
+        run: |
+          cd dist
+          name="na-${{ matrix.target.name }}${{ matrix.target.ext }}"
+          # tar.gz for unix, zip for windows (closer to native conventions)
+          if [ "${{ matrix.target.name }}" = "windows-x64" ]; then
+            zip -9 "${name%.exe}.zip" "$name"
+          else
+            tar -czf "$name.tar.gz" "$name"
+          fi
+          ls -lh
 
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          gh release upload "$tag" \
-            "dist/na-${{ matrix.target.name }}${{ matrix.target.ext }}" \
+          if [ "${{ matrix.target.name }}" = "windows-x64" ]; then
+            asset="dist/na-${{ matrix.target.name }}.zip"
+          else
+            asset="dist/na-${{ matrix.target.name }}.tar.gz"
+          fi
+          gh release upload "$tag" "$asset" \
             --repo "$GITHUB_REPOSITORY" --clobber
