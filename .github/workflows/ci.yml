@@ -44,8 +44,29 @@ jobs:
       - name: Compile binary smoke
         run: bun run build:bin && ./dist/na --version
 
-  release-binaries:
+  create-release:
     needs: lint-and-build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+                 --title "$tag" --notes "Release $tag"
+
+  release-binaries:
+    needs: create-release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -80,6 +101,10 @@ jobs:
             --outfile=dist/na-${{ matrix.target.name }}${{ matrix.target.ext }}
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/na-${{ matrix.target.name }}${{ matrix.target.ext }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release upload "$tag" \
+            "dist/na-${{ matrix.target.name }}${{ matrix.target.ext }}" \
+            --repo "$GITHUB_REPOSITORY" --clobber
