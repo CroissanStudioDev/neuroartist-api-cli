@@ -1,6 +1,6 @@
 {
   "name": "@neuroartist/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Neuroartist API Gateway — command-line interface for image/video generation, balance, usage and activity. Agent-friendly JSON envelope and granular exit codes.",
   "keywords": [
     "neuroartist",
