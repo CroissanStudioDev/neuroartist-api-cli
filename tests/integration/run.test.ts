@@ -3,13 +3,13 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serve } from "bun";
-import { startMockGateway, TEST_API_KEY } from "../helpers/mock-gateway.ts";
+import { startMockApi, TEST_API_KEY } from "../helpers/mock-api.ts";
 import { runCli } from "../helpers/run-cli.ts";
 import { createTempEnv } from "../helpers/temp-config.ts";
 
 const QUEUE_STREAM_RE = /queue stream/;
 
-let mock: ReturnType<typeof startMockGateway>;
+let mock: ReturnType<typeof startMockApi>;
 let env: ReturnType<typeof createTempEnv>;
 let outDir: string;
 
@@ -34,7 +34,7 @@ afterEach(() => {
 
 describe("run + queue", () => {
   test("run sync returns result envelope", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["run", "test-model", "-i", "prompt=hello"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -47,7 +47,7 @@ describe("run + queue", () => {
   });
 
   test("run sends correct body to /run/{model}", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     await runCli(["run", "my-model", "-i", "prompt=cat", "-i", "steps=20"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -62,7 +62,7 @@ describe("run + queue", () => {
   });
 
   test("run with -o downloads referenced URLs", async () => {
-    mock = startMockGateway({
+    mock = startMockApi({
       routes: {
         "/run/dl-model": () =>
           Response.json({
@@ -82,7 +82,7 @@ describe("run + queue", () => {
 
     // Re-start mock with the actual asset URL substituted.
     mock.stop();
-    mock = startMockGateway({
+    mock = startMockApi({
       routes: {
         "/run/dl-model": () => Response.json({ images: [{ url: assetUrl }] }),
       },
@@ -108,7 +108,7 @@ describe("run + queue", () => {
   });
 
   test("queue submit returns requestId + next_actions", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["queue", "submit", "test-model", "-i", "prompt=hi"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -122,7 +122,7 @@ describe("run + queue", () => {
   });
 
   test("queue status", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["queue", "status", "test-model", "req_abc"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -134,7 +134,7 @@ describe("run + queue", () => {
   });
 
   test("queue stream emits NDJSON of SSE frames", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["queue", "stream", "test-model", "req_abc"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -149,7 +149,7 @@ describe("run + queue", () => {
   });
 
   test("queue cancel", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["queue", "cancel", "test-model", "req_abc"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,

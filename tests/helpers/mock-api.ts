@@ -22,7 +22,7 @@ export interface MockOptions {
   routes?: Record<string, Handler>;
 }
 
-export interface MockGateway {
+export interface MockApi {
   baseUrl: string;
   /** All requests received, in order. */
   readonly requests: Array<{
@@ -238,9 +238,9 @@ function dispatchPattern(req: Request, pathname: string, opts: MockOptions): Res
   return null;
 }
 
-export function startMockGateway(opts: MockOptions = {}): MockGateway {
+export function startMockApi(opts: MockOptions = {}): MockApi {
   const expectedKey = opts.apiKey ?? DEFAULT_KEY;
-  const requests: MockGateway["requests"] = [];
+  const requests: MockApi["requests"] = [];
   const authGate = buildAuthGate(expectedKey);
 
   const server: Server = serve({

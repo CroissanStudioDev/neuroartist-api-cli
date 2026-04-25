@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { startMockGateway, TEST_API_KEY } from "../helpers/mock-gateway.ts";
+import { startMockApi, TEST_API_KEY } from "../helpers/mock-api.ts";
 import { runCli } from "../helpers/run-cli.ts";
 import { createTempEnv } from "../helpers/temp-config.ts";
 
-let mock: ReturnType<typeof startMockGateway>;
+let mock: ReturnType<typeof startMockApi>;
 let env: ReturnType<typeof createTempEnv>;
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("balance + usage", () => {
   test("balance returns envelope with userId+balance", async () => {
-    mock = startMockGateway({ balance: 2500 });
+    mock = startMockApi({ balance: 2500 });
     const r = await runCli(["balance"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -31,7 +31,7 @@ describe("balance + usage", () => {
   });
 
   test("balance sets x-api-key header", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     await runCli(["balance"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -42,7 +42,7 @@ describe("balance + usage", () => {
   });
 
   test("usage summary returns windows", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["usage", "summary"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -54,7 +54,7 @@ describe("balance + usage", () => {
   });
 
   test("activity returns items", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["activity"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -66,7 +66,7 @@ describe("balance + usage", () => {
   });
 
   test("server 500 → exit 4 (retryable)", async () => {
-    mock = startMockGateway({ failWith: 500 });
+    mock = startMockApi({ failWith: 500 });
     const r = await runCli(["balance"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -78,7 +78,7 @@ describe("balance + usage", () => {
   });
 
   test("server 429 → exit 4 + retryable=true", async () => {
-    mock = startMockGateway({ failWith: 429 });
+    mock = startMockApi({ failWith: 429 });
     const r = await runCli(["balance"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { startMockGateway, TEST_API_KEY } from "../helpers/mock-gateway.ts";
+import { startMockApi, TEST_API_KEY } from "../helpers/mock-api.ts";
 import { runCli } from "../helpers/run-cli.ts";
 import { createTempEnv } from "../helpers/temp-config.ts";
 
-let mock: ReturnType<typeof startMockGateway>;
+let mock: ReturnType<typeof startMockApi>;
 let env: ReturnType<typeof createTempEnv>;
 
 beforeEach(() => {
-  mock = startMockGateway();
+  mock = startMockApi();
   env = createTempEnv();
 });
 

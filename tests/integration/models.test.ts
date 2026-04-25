@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { startMockGateway } from "../helpers/mock-gateway.ts";
+import { startMockApi } from "../helpers/mock-api.ts";
 import { runCli } from "../helpers/run-cli.ts";
 import { createTempEnv } from "../helpers/temp-config.ts";
 
-let mock: ReturnType<typeof startMockGateway>;
+let mock: ReturnType<typeof startMockApi>;
 let env: ReturnType<typeof createTempEnv>;
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("models", () => {
   test("models list (no auth required)", async () => {
-    mock = startMockGateway({
+    mock = startMockApi({
       models: [
         { modelId: "alpha", displayName: "Alpha", priceRub: 5 },
         { modelId: "beta", displayName: "Beta", priceRub: 15 },
@@ -37,7 +37,7 @@ describe("models", () => {
   });
 
   test("models list passes query params", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     await runCli(["models", "list", "--search", "banana", "--limit", "5"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -47,7 +47,7 @@ describe("models", () => {
   });
 
   test("models get returns single model", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["models", "get", "test-model"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -58,7 +58,7 @@ describe("models", () => {
   });
 
   test("models schema returns the schema field directly", async () => {
-    mock = startMockGateway();
+    mock = startMockApi();
     const r = await runCli(["models", "schema", "test-model"], {
       XDG_CONFIG_HOME: env.configHome,
       NEUROARTIST_API_URL: mock.baseUrl,
@@ -69,7 +69,7 @@ describe("models", () => {
   });
 
   test("unknown model → 404 → exit 2", async () => {
-    mock = startMockGateway({
+    mock = startMockApi({
       routes: {
         "/models/unknown": () => Response.json({ error: "not_found" }, { status: 404 }),
       },

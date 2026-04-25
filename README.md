@@ -364,7 +364,7 @@ bun run test:integration         # только integration
 ```
 tests/
 ├── helpers/
-│   ├── mock-gateway.ts    Bun.serve mock со всеми public + auth-routes API
+│   ├── mock-api.ts        Bun.serve mock со всеми public + auth-routes API
 │   ├── temp-config.ts     изолированный XDG_CONFIG_HOME per-test
 │   └── run-cli.ts         спавн bun run src/index.ts subprocess
 ├── unit/                  pure functions: parseInputs, parseSse, collectUrls,
