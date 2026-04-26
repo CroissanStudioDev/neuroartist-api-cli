@@ -4,8 +4,7 @@ import { ApiClient } from "../client.ts";
 import { resolveAuth } from "../config.ts";
 import { collectUrls, downloadUrls } from "../download.ts";
 import type { GlobalOpts } from "../output.ts";
-import { printInfo, printResult, printSuccess, printWarning } from "../output.ts";
-import { parseSse } from "../sse.ts";
+import { printInfo, printResult, printSuccess } from "../output.ts";
 import { buildBody } from "./queue.ts";
 
 interface RunAsyncResponse {
@@ -61,7 +60,7 @@ Examples:
               next_actions: [
                 {
                   command: `na queue stream ${modelId} ${async.requestId}`,
-                  description: "Stream live progress",
+                  description: "Poll progress until terminal state",
                 },
                 {
                   command: `na queue result ${modelId} ${async.requestId} -o ./out`,
@@ -73,7 +72,7 @@ Examples:
           return;
         }
         printInfo(
-          `Async dispatch: ${kleur.bold(async.requestId)} (${async.status}). Streaming progress…`,
+          `Async dispatch: ${kleur.bold(async.requestId)} (${async.status}). Polling progress…`,
           g
         );
         const final = await waitForCompletion({
@@ -103,31 +102,11 @@ function isAsyncResponse(value: unknown): value is RunAsyncResponse {
   );
 }
 
-type FrameOutcome = "continue" | "completed" | "shutdown";
+const POLL_INTERVAL_MS = 2000;
 
-function frameStage(parsed: Record<string, unknown>): string | null {
-  if (typeof parsed.stage === "string") {
-    return parsed.stage;
-  }
-  if (typeof parsed.status === "string") {
-    return parsed.status;
-  }
-  return null;
-}
-
-function classifyFrame(stage: string | null, status: unknown): FrameOutcome {
-  if (
-    stage === "completed" ||
-    stage === "succeeded" ||
-    stage === "COMPLETED" ||
-    status === "COMPLETED"
-  ) {
-    return "completed";
-  }
-  if (stage === "server_closing") {
-    return "shutdown";
-  }
-  return "continue";
+interface StatusResponse {
+  state?: string;
+  status?: string;
 }
 
 async function waitForCompletion(args: {
@@ -139,50 +118,34 @@ async function waitForCompletion(args: {
   globalOpts: GlobalOpts;
 }): Promise<unknown> {
   const { client, modelId, requestId, timeoutMs, startedAt, globalOpts } = args;
+  const deadline = startedAt + timeoutMs;
+  let lastState: string | null = null;
 
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  while (Date.now() < deadline) {
+    const data = await client.request<StatusResponse>(
+      "GET",
+      `/queue/${modelId}/requests/${requestId}/status`
+    );
+    const state = (data.state ?? data.status ?? "").toLowerCase();
 
-  try {
-    const stream = await client.stream(`/queue/${modelId}/requests/${requestId}/progress/stream`, {
-      signal: ac.signal,
-    });
-
-    let lastStage: string | null = null;
-    for await (const frame of parseSse(stream)) {
-      let parsed: Record<string, unknown> = {};
-      try {
-        parsed = JSON.parse(frame.data) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-
-      const stage = frameStage(parsed);
-      if (stage && stage !== lastStage) {
-        const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-        printInfo(`[${elapsed}s] ${stage}`, globalOpts);
-        lastStage = stage;
-      }
-
-      if (stage === "failed" || stage === "error" || stage === "FAILED") {
-        throw new Error(`Generation failed: ${frame.data}`);
-      }
-      const outcome = classifyFrame(stage, parsed.status);
-      if (outcome === "completed") {
-        break;
-      }
-      if (outcome === "shutdown") {
-        printWarning("Gateway is shutting down — falling back to polling.", globalOpts);
-        break;
-      }
+    if (state && state !== lastState) {
+      const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+      printInfo(`[${elapsed}s] ${state}`, globalOpts);
+      lastState = state;
     }
-  } catch (err) {
-    if ((err as Error).name === "AbortError") {
-      throw new Error(`Timeout waiting for ${requestId} after ${timeoutMs}ms`);
+
+    if (state === "failed" || state === "error") {
+      throw new Error(`Generation failed (state: ${state})`);
     }
-    throw err;
-  } finally {
-    clearTimeout(timer);
+    if (state === "completed" || state === "succeeded") {
+      break;
+    }
+
+    await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+
+  if (Date.now() >= deadline) {
+    throw new Error(`Timeout waiting for ${requestId} after ${timeoutMs}ms`);
   }
 
   return client.request<unknown>("GET", `/queue/${modelId}/requests/${requestId}`);

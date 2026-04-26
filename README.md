@@ -128,7 +128,7 @@ na run <model> --no-wait         Только submit, без ожидания
 na queue submit <model> -i …     Поставить в очередь
 na queue status <model> <id>     Текущий статус
 na queue result <model> <id>     Финальный результат
-na queue stream <model> <id>     SSE прогресс в реальном времени
+na queue stream <model> <id>     Polling прогресса до terminal state
 na queue cancel <model> <id>     Отменить
 
 na balance                       Текущий баланс
@@ -255,13 +255,13 @@ esac
 na commands --json | jq '.data[] | select(.name | startswith("na queue"))'
 ```
 
-### NDJSON streaming
+### NDJSON polling
 
-`na queue stream <model> <id> --json` отдаёт **одну JSON-строку на каждый event** (NDJSON, как `kubectl get -w -o json`):
+`na queue stream <model> <id> --json` опрашивает `GET .../status` каждые 2с и отдаёт **одну JSON-строку на каждый poll** (NDJSON) до terminal state (`completed`/`failed`/`cancelled`):
 
 ```bash
 na queue stream fooz $REQ --json | while read -r line; do
-  stage=$(echo "$line" | jq -r '.stage // .status')
+  stage=$(echo "$line" | jq -r '.state // .status')
   [[ "$stage" == "completed" ]] && break
 done
 ```
@@ -311,7 +311,6 @@ src/
 ├── config.ts             ~/.config/neuroartist/config.json + chmod 0600
 ├── client.ts             fetch-обёртка с auth, ApiError, CliError
 ├── envelope.ts           JSON envelope + exit-code mapping
-├── sse.ts                SSE-парсер для /progress/stream
 ├── inputs.ts             -i key=val парсер с @file и dotted-path
 ├── download.ts           collectUrls + downloadUrls для ассетов
 ├── output.ts             pretty/json/table рендереры
@@ -367,7 +366,7 @@ tests/
 │   ├── mock-api.ts        Bun.serve mock со всеми public + auth-routes API
 │   ├── temp-config.ts     изолированный XDG_CONFIG_HOME per-test
 │   └── run-cli.ts         спавн bun run src/index.ts subprocess
-├── unit/                  pure functions: parseInputs, parseSse, collectUrls,
+├── unit/                  pure functions: parseInputs, collectUrls,
 │                          envelope/exit codes, config
 └── integration/           CLI flow через subprocess + mock API:
                            auth, balance, models, run + queue, completion,

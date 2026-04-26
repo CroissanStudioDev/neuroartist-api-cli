@@ -129,32 +129,4 @@ export class ApiClient {
 
     return parsed as T;
   }
-
-  async stream(path: string, init: RequestInitArgs = {}): Promise<Response> {
-    const url = this.buildUrl(path, init.query);
-    const headers: Record<string, string> = {
-      "user-agent": USER_AGENT,
-      accept: "text/event-stream",
-    };
-    if (init.auth !== false) {
-      headers["x-api-key"] = this.requireKey();
-    }
-
-    if (this.opts.debug) {
-      process.stderr.write(`[debug] → GET ${url.toString()} (SSE)\n`);
-    }
-
-    const res = await fetch(url, { method: "GET", headers, signal: init.signal });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      let parsed: unknown = text;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        // keep text
-      }
-      throw new ApiError(res.status, null, parsed);
-    }
-    return res;
-  }
 }

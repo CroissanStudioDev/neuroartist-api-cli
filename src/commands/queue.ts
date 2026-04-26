@@ -7,7 +7,6 @@ import { collectUrls, downloadUrls } from "../download.ts";
 import { parseInputs } from "../inputs.ts";
 import type { GlobalOpts } from "../output.ts";
 import { detectFormat, printInfo, printResult, printSuccess } from "../output.ts";
-import { parseSse } from "../sse.ts";
 
 interface SubmitResponse {
   request_id?: string;
@@ -58,7 +57,7 @@ Examples:
           ? [
               {
                 command: `na queue stream ${modelId} ${reqId}`,
-                description: "Stream live progress (SSE)",
+                description: "Poll progress until terminal state",
               },
               {
                 command: `na queue status ${modelId} ${reqId}`,
@@ -123,19 +122,29 @@ Examples:
 
   queue
     .command("stream <modelId> <requestId>")
-    .description("Subscribe to the SSE progress channel (NDJSON in --json mode)")
-    .action(async (modelId: string, requestId: string, _opts, command) => {
+    .description("Poll progress until terminal state (NDJSON in --json mode)")
+    .option("--interval <ms>", "Polling interval in milliseconds", "2000")
+    .action(async (modelId: string, requestId: string, opts, command) => {
       const g = command.optsWithGlobals() as GlobalOpts;
       const client = new ApiClient({ ...resolveAuth(g), debug: g.debug });
-      const res = await client.stream(`/queue/${modelId}/requests/${requestId}/progress/stream`);
+      const interval = Math.max(500, Number(opts.interval) || 2000);
       const json = detectFormat(g) === "json";
-      for await (const frame of parseSse(res)) {
+
+      while (true) {
+        const data = await client.request<StatusResponse>(
+          "GET",
+          `/queue/${modelId}/requests/${requestId}/status`
+        );
         if (json) {
-          // NDJSON: one frame per line, raw payload (already JSON from gateway).
-          process.stdout.write(`${frame.data}\n`);
+          process.stdout.write(`${JSON.stringify(data)}\n`);
         } else {
-          renderProgressFrame(frame.data);
+          renderProgressFrame(JSON.stringify(data));
         }
+        const state = (data.state ?? data.status ?? "").toLowerCase();
+        if (state === "completed" || state === "failed" || state === "cancelled") {
+          break;
+        }
+        await new Promise<void>((r) => setTimeout(r, interval));
       }
     });
 

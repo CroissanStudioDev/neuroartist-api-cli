@@ -49,15 +49,9 @@ const MODEL_DETAIL_RE = /^\/models\/(.+)$/;
 const RUN_RE = /^\/run\/(.+)$/;
 const QUEUE_SUBMIT_RE = /^\/queue\/([^/]+)$/;
 const QUEUE_STATUS_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/status$/;
-const QUEUE_STREAM_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/progress\/stream$/;
 const QUEUE_RESULT_RE = /^\/queue\/(.+)\/requests\/([^/]+)$/;
 const QUEUE_CANCEL_RE = /^\/queue\/(.+)\/requests\/([^/]+)\/cancel$/;
 const PUBLIC_MODEL_DETAIL_RE = /^\/models\/[^/]+$/;
-
-const PROGRESS_FRAMES = [
-  'event: progress\ndata: {"stage":"starting"}\n\n',
-  'event: progress\ndata: {"stage":"completed"}\n\n',
-];
 
 function isPublic(pathname: string): boolean {
   return pathname === "/health" || pathname === "/models" || PUBLIC_MODEL_DETAIL_RE.test(pathname);
@@ -144,21 +138,6 @@ function queueStatusRoute(reqId: string): Response {
   return Response.json({ status: "COMPLETED", request_id: reqId });
 }
 
-function queueStreamRoute(): Response {
-  return new Response(
-    new ReadableStream({
-      start(controller) {
-        const enc = new TextEncoder();
-        for (const frame of PROGRESS_FRAMES) {
-          controller.enqueue(enc.encode(frame));
-        }
-        controller.close();
-      },
-    }),
-    { headers: { "content-type": "text/event-stream" } }
-  );
-}
-
 function queueResultRoute(): Response {
   return Response.json({ images: [{ url: "https://example.com/result.png" }] });
 }
@@ -203,7 +182,6 @@ interface PatternRoute {
 
 const PATTERN_ROUTES: PatternRoute[] = [
   { re: QUEUE_CANCEL_RE, method: "PUT", handle: () => queueCancelRoute() },
-  { re: QUEUE_STREAM_RE, method: "GET", handle: () => queueStreamRoute() },
   {
     re: QUEUE_STATUS_RE,
     method: "GET",

@@ -133,7 +133,7 @@ describe("run + queue", () => {
     expect(env_.data.status).toBe("COMPLETED");
   });
 
-  test("queue stream emits NDJSON of SSE frames", async () => {
+  test("queue stream emits NDJSON via polling", async () => {
     mock = startMockApi();
     const r = await runCli(["queue", "stream", "test-model", "req_abc"], {
       XDG_CONFIG_HOME: env.configHome,
@@ -142,10 +142,10 @@ describe("run + queue", () => {
     });
     expect(r.exitCode).toBe(0);
     const lines = r.stdout.trim().split("\n").filter(Boolean);
-    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(lines.length).toBeGreaterThanOrEqual(1);
     const parsed = lines.map((l) => JSON.parse(l));
-    expect(parsed[0].stage).toBe("starting");
-    expect(parsed.at(-1).stage).toBe("completed");
+    const last = parsed.at(-1) as Record<string, unknown>;
+    expect((last.status as string | undefined)?.toLowerCase()).toBe("completed");
   });
 
   test("queue cancel", async () => {
