@@ -19,7 +19,7 @@ const program = new Command();
 
 program
   .name("na")
-  .description("Neuroartist API Gateway command-line interface")
+  .description("НейроХудожник API command-line interface")
   .version(VERSION, "-v, --version", "Print version")
   .addOption(
     new Option("--profile <name>", "Profile name from config file").env("NEUROARTIST_PROFILE")

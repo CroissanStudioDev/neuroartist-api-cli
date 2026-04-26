@@ -42,7 +42,7 @@ Examples:
           );
         }
         const answer = await password({
-          message: "Paste your Neuroartist API key (na_live_...)",
+          message: "Paste your НейроХудожник API key (na_live_...)",
           validate: (v) => (v && v.length >= 16 ? undefined : "API key looks too short"),
         });
         if (isCancel(answer)) {
