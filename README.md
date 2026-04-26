@@ -200,7 +200,7 @@ na balance --json | jq -r .data.balance
   "ok": true,
   "schemaVersion": 1,
   "command": "balance",
-  "data": { "userId": "...", "balance": 1234 },
+  "data": { "userId": "...", "balance": 1234.5 },
   "next_actions": [
     { "command": "na usage summary", "description": "Inspect spend" },
     { "command": "na activity", "description": "Last generations" }
